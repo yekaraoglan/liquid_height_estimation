@@ -17,7 +17,22 @@ catkin_package(
 )
 
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 
+add_library(liquid_height_detection
+  src/HeightDetector.cpp)
+
+link_directories(
+  ${PCL_LIBRARY_DIRS}
+)
+
+add_definitions(${PCL_DEFINITIONS})
+
+add_executable(height_detector src/height_detector_node.cpp src/HeightDetector)
+target_link_libraries(height_detector
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+)
