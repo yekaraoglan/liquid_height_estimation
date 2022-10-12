@@ -27,8 +27,28 @@ HeightDetector::~HeightDetector()
     std::cout << "Height Detector is destructed" << "\n";
 }
 
+pclCloud HeightDetector::removeNaNs(pcl::PassThrough<PointT> pass,
+                                    pclPointer& in_cloud)
+{
+    std::cout << "Removing NaNs..." << std::endl;
+    pclPointer out_cloud(new pclCloud);
+    pass.setInputCloud(in_cloud);
+    pass.filter(*out_cloud);
+    return *out_cloud;
+}
+
+void HeightDetector::clearClouds()
+{
+    this->input_cloud->clear();
+    this->input_cloud.reset(new pclCloud);
+
+    std::cout << "Cleared clouds" << "\n";
+}
+
 void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_cloud)
 {
     std::cout << "Received cloud message" << "\n";
     pcl::fromROSMsg(*input_cloud, *(this->input_cloud));
+    *(this->input_cloud) = this->removeNaNs(this->pass, this->input_cloud);
+    this->clearClouds();
 }
