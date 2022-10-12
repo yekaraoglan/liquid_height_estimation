@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  tf
 )
 
 find_package(PCL 1.8 REQUIRED)
@@ -12,7 +13,7 @@ find_package(PCL 1.8 REQUIRED)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES liquid_height_estimation
- CATKIN_DEPENDS roscpp rospy std_msgs
+ CATKIN_DEPENDS roscpp rospy std_msgs tf
 #  DEPENDS system_lib
 )
 
