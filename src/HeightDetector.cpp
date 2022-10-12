@@ -6,6 +6,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     this->initializeSubscribers();
     this->initializePublishers();
 
+    input_cloud = pclPointer(new pclCloud);
     std::cout << "Height Detector is constructed" << "\n";
 }
 
@@ -29,4 +30,5 @@ HeightDetector::~HeightDetector()
 void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_cloud)
 {
     std::cout << "Received cloud message" << "\n";
+    pcl::fromROSMsg(*input_cloud, *(this->input_cloud));
 }
