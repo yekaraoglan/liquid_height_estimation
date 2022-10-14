@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(liquid_height_estimation)
+add_definitions(-Wall -Werror)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -42,3 +43,4 @@ target_link_libraries(height_detector
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
 )
+add_dependencies(height_detector ${PROJECT_NAME}_gencfg)
