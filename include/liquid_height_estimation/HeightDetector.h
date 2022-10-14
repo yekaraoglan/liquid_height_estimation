@@ -57,6 +57,7 @@ class HeightDetector{
         pclPointer cloud_transformed;
         pclPointer cloud_scene;
         pclPointer cloud_plane;
+        pclPointer cloud_wo_plane;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals;
         Eigen::Matrix4f eigen_tf;
 
@@ -81,6 +82,7 @@ class HeightDetector{
         pcl::PointCloud<pcl::Normal> estimateNormals(pcl::PointCloud<PointT>::Ptr&);
         void segmentPlane(pclPointer&);
         pclCloud extractPlane(pclPointer&);
+        pclCloud removePlane(pclPointer&);
     public:
         HeightDetector(ros::NodeHandle&);
         ~HeightDetector();
