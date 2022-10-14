@@ -19,6 +19,10 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/filters/uniform_sampling.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <string>
@@ -60,6 +64,9 @@ class HeightDetector{
         pcl::UniformSampling<PointT> uniform_sampling;
         pcl::NormalEstimation<PointT, pcl::Normal> ne;
         pcl::search::KdTree<PointT>::Ptr tree;
+        pcl::PointIndices::Ptr inliers_plane;
+        pcl::ModelCoefficients::Ptr coefficients_plane;
+        pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
         
         void cloud_cb(const sensor_msgs::PointCloud2ConstPtr&);
         void initializePublishers();
@@ -69,6 +76,7 @@ class HeightDetector{
         void reconfigureCB(liquid_height_estimation::HeightDetectorConfig&, uint32_t);
         pclCloud removeFields(pcl::ConditionAnd<PointT>::Ptr& range_cond, pclPointer& in_cloud);
         pcl::PointCloud<pcl::Normal> estimateNormals(pcl::PointCloud<PointT>::Ptr&);
+        void segmentPlane(pclPointer&);
     public:
         HeightDetector(ros::NodeHandle&);
         ~HeightDetector();

@@ -15,6 +15,9 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
 
     field_cond = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
     tree = pcl::search::KdTree<PointT>::Ptr(new pcl::search::KdTree<PointT> ());
+    inliers_plane = pcl::PointIndices::Ptr(new pcl::PointIndices);
+    coefficients_plane = pcl::ModelCoefficients::Ptr(new pcl::ModelCoefficients);
+   
     listener.waitForTransform("zed_left_camera_frame", "camera_fixed", ros::Time(0), ros::Duration(3.0));
     listener.lookupTransform("zed_left_camera_frame", "camera_fixed", ros::Time(0), transform);
 
@@ -76,6 +79,16 @@ void HeightDetector::clearClouds()
     cloud_normals->clear();
     cloud_normals.reset(new pcl::PointCloud<pcl::Normal>);
 
+    inliers_plane->header.seq = 0;
+    inliers_plane->header.stamp = 0;
+    inliers_plane->header.frame_id = "";
+    inliers_plane->indices = {};
+
+    coefficients_plane->header.seq = 0;
+    coefficients_plane->header.stamp = 0;
+    coefficients_plane->header.frame_id = "";
+    coefficients_plane->values = {};
+
     std::cout << "Cleared clouds" << "\n";
 }
 
@@ -99,6 +112,19 @@ pcl::PointCloud<pcl::Normal> HeightDetector::estimateNormals(pcl::PointCloud<pcl
     ne.setKSearch(25);
     ne.compute(*cloud_normals);
     return *cloud_normals;
+}
+
+void HeightDetector::segmentPlane(pclPointer& input_cloud)
+{
+    seg.setOptimizeCoefficients(true);
+    seg.setModelType(pcl::SACMODEL_NORMAL_PLANE);
+    seg.setNormalDistanceWeight (0.1);
+    seg.setMethodType(pcl::SAC_RANSAC);
+    seg.setMaxIterations (30);
+    seg.setDistanceThreshold (0.1);
+    seg.setInputCloud (input_cloud);
+    seg.setInputNormals (cloud_normals);
+    seg.segment(*inliers_plane, *coefficients_plane);
 }
 
 void HeightDetector::reconfigureCB(liquid_height_estimation::HeightDetectorConfig& config, uint32_t level)
@@ -139,6 +165,7 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     uniform_sampling.filter(*cloud_scene);
 
     *cloud_normals = this->estimateNormals(cloud_scene);
+    this->segmentPlane(cloud_scene);
 
     pcl::toROSMsg(*cloud_scene, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
