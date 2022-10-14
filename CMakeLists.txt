@@ -6,9 +6,14 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
+  dynamic_reconfigure
 )
 
 find_package(PCL 1.8 REQUIRED)
+
+generate_dynamic_reconfigure_options(
+  cfg/HeightDetector.cfg
+)
 
 catkin_package(
 #  INCLUDE_DIRS include

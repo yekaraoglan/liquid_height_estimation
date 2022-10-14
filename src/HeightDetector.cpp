@@ -5,9 +5,14 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     this->nh_ = nh;
     this->initializeSubscribers();
     this->initializePublishers();
+    f = boost::bind(&HeightDetector::reconfigureCB, this, _1, _2);
+    server.setCallback(f);
 
     input_cloud = pclPointer(new pclCloud);
     cloud_transformed = pclPointer(new pclCloud);
+    cloud_scene = pclPointer(new pclCloud);
+
+    field_cond = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
 
     ros::Time now = ros::Time::now();
     listener.waitForTransform("zed_left_camera_frame", "camera_fixed", ros::Time(0), ros::Duration(3.0));
@@ -65,6 +70,29 @@ void HeightDetector::clearClouds()
     std::cout << "Cleared clouds" << "\n";
 }
 
+pclCloud HeightDetector::removeFields(pcl::ConditionAnd<PointT>::Ptr& range_cond,
+                                        pclPointer& in_cloud)
+{
+    std::cout << "Removing fields..." << std::endl;
+    pclPointer out_cloud(new pclCloud);
+    condrem.setCondition(range_cond);
+    condrem.setInputCloud(in_cloud);
+    condrem.setKeepOrganized(true);
+    condrem.filter(*out_cloud);
+    return *out_cloud;
+}
+
+void HeightDetector::reconfigureCB(liquid_height_estimation::HeightDetectorConfig& config, uint32_t level)
+{
+    ROS_INFO("Reconfigure Request");
+    this->min_x = config.min_x;
+    this->max_x = config.max_x;
+    this->min_y = config.min_y;
+    this->max_y = config.max_y;
+    this->min_z = config.min_z;
+    this->max_z = config.max_z;
+}
+
 void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_cloud)
 {
     std::cout << "Received cloud message" << "\n";
@@ -77,7 +105,16 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     pcl::transformPointCloud(*(this->input_cloud), *cloud_transformed, eigen_tf);
     *cloud_transformed = this->removeNaNs(this->pass, cloud_transformed);
     
-    pcl::toROSMsg(*cloud_transformed, test_cloud);
+    field_cond->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, min_x)));
+    field_cond->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, max_x)));
+    field_cond->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, min_y)));
+    field_cond->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, max_y)));
+    field_cond->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::GT, min_z)));
+    field_cond->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::LT, max_z)));
+    
+    *cloud_scene = this->removeFields(field_cond, cloud_transformed);
+
+    pcl::toROSMsg(*cloud_scene, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
     test_cloud.header.stamp = input_cloud->header.stamp;
     this->test_cloud_pub.publish(test_cloud);
