@@ -18,6 +18,7 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/common/transforms.h>
 #include <pcl/filters/conditional_removal.h>
+#include <pcl/filters/uniform_sampling.h>
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> pclCloud;
@@ -47,8 +48,8 @@ class HeightDetector{
         pcl::PassThrough<PointT> pass;
         pcl::ConditionAnd<PointT>::Ptr field_cond;
         pcl::ConditionalRemoval<PointT> condrem;
+        pcl::UniformSampling<PointT> uniform_sampling;
         
-
         void cloud_cb(const sensor_msgs::PointCloud2ConstPtr&);
         void initializePublishers();
         void initializeSubscribers();

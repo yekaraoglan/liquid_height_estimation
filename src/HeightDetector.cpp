@@ -113,6 +113,11 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     field_cond->addComparison (pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("z", pcl::ComparisonOps::LT, max_z)));
     
     *cloud_scene = this->removeFields(field_cond, cloud_transformed);
+    *cloud_scene = this->removeNaNs(this->pass, cloud_scene);
+
+    uniform_sampling.setInputCloud(cloud_scene);
+    uniform_sampling.setRadiusSearch(0.001);
+    uniform_sampling.filter(*cloud_scene);
 
     pcl::toROSMsg(*cloud_scene, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
