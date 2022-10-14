@@ -61,6 +61,7 @@ class HeightDetector{
         pclPointer cloud_wo_plane;
         pclPointer cloud_filtered;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals;
+        pcl::PointCloud<pcl::Normal>::Ptr cloud_normals_cylinder;
         Eigen::Matrix4f eigen_tf;
 
         pcl::PassThrough<PointT> pass;
@@ -69,10 +70,11 @@ class HeightDetector{
         pcl::UniformSampling<PointT> uniform_sampling;
         pcl::NormalEstimation<PointT, pcl::Normal> ne;
         pcl::search::KdTree<PointT>::Ptr tree;
-        pcl::PointIndices::Ptr inliers_plane;
-        pcl::ModelCoefficients::Ptr coefficients_plane;
+        pcl::PointIndices::Ptr inliers_plane, inliers_cylinder;
+        pcl::ModelCoefficients::Ptr coefficients_plane, coefficients_cylinder;
         pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
         pcl::ExtractIndices<PointT> extract;
+        pcl::ExtractIndices<pcl::Normal> extract_normals;
         pcl::StatisticalOutlierRemoval<PointT> sor;
         
         void cloud_cb(const sensor_msgs::PointCloud2ConstPtr&);
@@ -86,6 +88,7 @@ class HeightDetector{
         void segmentPlane(pclPointer&);
         pclCloud extractPlane(pclPointer&);
         pclCloud removePlane(pclPointer&);
+        void segmentCylinder(pclPointer&);
     public:
         HeightDetector(ros::NodeHandle&);
         ~HeightDetector();

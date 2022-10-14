@@ -12,6 +12,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     cloud_transformed = pclPointer(new pclCloud);
     cloud_scene = pclPointer(new pclCloud);
     cloud_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud<pcl::Normal>);
+    cloud_normals_cylinder = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud<pcl::Normal>);
     cloud_plane = pclPointer(new pclCloud);
     cloud_wo_plane = pclPointer(new pclCloud);
     cloud_filtered = pclPointer(new pclCloud);
@@ -20,6 +21,8 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     tree = pcl::search::KdTree<PointT>::Ptr(new pcl::search::KdTree<PointT> ());
     inliers_plane = pcl::PointIndices::Ptr(new pcl::PointIndices);
     coefficients_plane = pcl::ModelCoefficients::Ptr(new pcl::ModelCoefficients);
+    inliers_cylinder = pcl::PointIndices::Ptr(new pcl::PointIndices);
+    coefficients_cylinder = pcl::ModelCoefficients::Ptr(new pcl::ModelCoefficients);
    
     listener.waitForTransform("zed_left_camera_frame", "camera_fixed", ros::Time(0), ros::Duration(3.0));
     listener.lookupTransform("zed_left_camera_frame", "camera_fixed", ros::Time(0), transform);
@@ -98,6 +101,16 @@ void HeightDetector::clearClouds()
     coefficients_plane->header.frame_id = "";
     coefficients_plane->values = {};
 
+    inliers_cylinder->header.seq = 0;
+    inliers_cylinder->header.stamp = 0;
+    inliers_cylinder->header.frame_id = "";
+    inliers_cylinder->indices = {};
+
+    coefficients_cylinder->header.seq = 0;
+    coefficients_cylinder->header.stamp = 0;
+    coefficients_cylinder->header.frame_id = "";
+    coefficients_cylinder->values = {};
+
     std::cout << "Cleared clouds" << "\n";
 }
 
@@ -153,6 +166,25 @@ pclCloud HeightDetector::removePlane(pclPointer& input_cloud)
     return *out_cloud;
 }
 
+void HeightDetector::segmentCylinder(pclPointer& input_cloud)
+{
+    extract_normals.setNegative(true);
+    extract_normals.setInputCloud(cloud_normals);
+    extract_normals.setIndices(inliers_plane);
+    extract_normals.filter(*cloud_normals_cylinder);
+    seg.setOptimizeCoefficients(true);
+    seg.setModelType(pcl::SACMODEL_CYLINDER);
+    seg.setMethodType(pcl::SAC_RANSAC);
+    seg.setNormalDistanceWeight(0.1);
+    seg.setMaxIterations(10000);
+    seg.setDistanceThreshold(0.05);
+    seg.setRadiusLimits(0, 0.2);
+    seg.setInputCloud(input_cloud);
+    seg.setInputNormals(cloud_normals_cylinder);
+    seg.segment(*inliers_cylinder, *coefficients_cylinder);
+    
+}
+
 void HeightDetector::reconfigureCB(liquid_height_estimation::HeightDetectorConfig& config, uint32_t level)
 {
     ROS_INFO("Reconfigure Request");
@@ -190,17 +222,19 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     uniform_sampling.setRadiusSearch(0.001);
     uniform_sampling.filter(*cloud_scene);
 
+    // sor.setInputCloud(cloud_scene);
+    // sor.setMeanK(50);
+    // sor.setStddevMulThresh(1.0);
+    // sor.filter(*cloud_filtered);
+
     *cloud_normals = this->estimateNormals(cloud_scene);
     this->segmentPlane(cloud_scene);
     *cloud_plane = this->extractPlane(cloud_scene);
     *cloud_wo_plane = this->removePlane(cloud_scene);
 
-    sor.setInputCloud(cloud_wo_plane);
-    sor.setMeanK(50);
-    sor.setStddevMulThresh(1.0);
-    sor.filter(*cloud_filtered);
+    this->segmentCylinder(cloud_wo_plane);
 
-    pcl::toROSMsg(*cloud_filtered, test_cloud);
+    pcl::toROSMsg(*cloud_wo_plane, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
     test_cloud.header.stamp = input_cloud->header.stamp;
     this->test_cloud_pub.publish(test_cloud);
