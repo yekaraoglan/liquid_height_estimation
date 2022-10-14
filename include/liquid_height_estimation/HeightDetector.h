@@ -16,8 +16,9 @@
 // PCL related libraries
 #include <pcl/common/transforms.h>
 #include <pcl/features/normal_3d.h>
-#include <pcl/filters/passthrough.h>
 #include <pcl/filters/conditional_removal.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/passthrough.h>
 #include <pcl/filters/uniform_sampling.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/sample_consensus/method_types.h>
@@ -55,6 +56,7 @@ class HeightDetector{
         pclPointer input_cloud;
         pclPointer cloud_transformed;
         pclPointer cloud_scene;
+        pclPointer cloud_plane;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals;
         Eigen::Matrix4f eigen_tf;
 
@@ -67,6 +69,7 @@ class HeightDetector{
         pcl::PointIndices::Ptr inliers_plane;
         pcl::ModelCoefficients::Ptr coefficients_plane;
         pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
+        pcl::ExtractIndices<PointT> extract;
         
         void cloud_cb(const sensor_msgs::PointCloud2ConstPtr&);
         void initializePublishers();
@@ -77,6 +80,7 @@ class HeightDetector{
         pclCloud removeFields(pcl::ConditionAnd<PointT>::Ptr& range_cond, pclPointer& in_cloud);
         pcl::PointCloud<pcl::Normal> estimateNormals(pcl::PointCloud<PointT>::Ptr&);
         void segmentPlane(pclPointer&);
+        pclCloud extractPlane(pclPointer&);
     public:
         HeightDetector(ros::NodeHandle&);
         ~HeightDetector();
