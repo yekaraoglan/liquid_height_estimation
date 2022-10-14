@@ -69,12 +69,18 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
 {
     std::cout << "Received cloud message" << "\n";
     fixed_cloud = *input_cloud;
-    fixed_cloud.header.frame_id = "camera_fixed";
+    fixed_cloud.header.frame_id = "zed_left_camera_frame";
     fixed_cloud.header.stamp = ros::Time::now();
 
     pcl::fromROSMsg(fixed_cloud, *(this->input_cloud));
     *(this->input_cloud) = this->removeNaNs(this->pass, this->input_cloud);
     pcl::transformPointCloud(*(this->input_cloud), *cloud_transformed, eigen_tf);
-
+    *cloud_transformed = this->removeNaNs(this->pass, cloud_transformed);
+    
+    pcl::toROSMsg(*cloud_transformed, test_cloud);
+    test_cloud.header.frame_id = "zed_left_camera_frame";
+    test_cloud.header.stamp = input_cloud->header.stamp;
+    this->test_cloud_pub.publish(test_cloud);
+    
     this->clearClouds();
 }
