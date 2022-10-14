@@ -52,7 +52,7 @@ void HeightDetector::initializePublishers()
 {
     this->height_pub = this->nh_.advertise<std_msgs::Float64>("/height_detector/height", 1);
     this->test_cloud_pub = this->nh_.advertise<sensor_msgs::PointCloud2>("/height_detector/test_cloud", 1);
-    
+    this->cylinder_coeff_pub = this->nh_.advertise<std_msgs::Float64MultiArray>("/height_detector/cylinder_coefficients", 1);
     std::cout << "Publishers are initialized" << "\n";
 }
 
@@ -222,17 +222,20 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     uniform_sampling.setRadiusSearch(0.001);
     uniform_sampling.filter(*cloud_scene);
 
-    // sor.setInputCloud(cloud_scene);
-    // sor.setMeanK(50);
-    // sor.setStddevMulThresh(1.0);
-    // sor.filter(*cloud_filtered);
-
     *cloud_normals = this->estimateNormals(cloud_scene);
     this->segmentPlane(cloud_scene);
     *cloud_plane = this->extractPlane(cloud_scene);
     *cloud_wo_plane = this->removePlane(cloud_scene);
 
     this->segmentCylinder(cloud_wo_plane);
+
+    std_msgs::Float64MultiArray msg;
+    for (auto i: coefficients_cylinder->values)
+    {
+        msg.data.push_back(i);
+    }
+    cylinder_coeff_pub.publish(msg);
+    msg.data.clear();
 
     pcl::toROSMsg(*cloud_wo_plane, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";

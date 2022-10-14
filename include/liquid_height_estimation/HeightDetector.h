@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <tf/transform_listener.h>
 #include <dynamic_reconfigure/server.h>
 #include <liquid_height_estimation/HeightDetectorConfig.h>
@@ -44,6 +45,7 @@ class HeightDetector{
         ros::Subscriber cloud_sub;
         ros::Publisher height_pub;
         ros::Publisher test_cloud_pub;
+        ros::Publisher cylinder_coeff_pub;
         double min_x, min_y, min_z, max_x, max_y, max_z;
 
         tf::StampedTransform transform;
