@@ -14,11 +14,19 @@
 #include <signal.h>
 
 // PCL related libraries
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/filters/passthrough.h>
 #include <pcl/common/transforms.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/filters/passthrough.h>
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/filters/uniform_sampling.h>
+#include <pcl_conversions/pcl_conversions.h>
+
+#include <string>
+#include <cmath>
+#include <ctime>
+
+#include <Eigen/Geometry>
+
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> pclCloud;
@@ -43,12 +51,15 @@ class HeightDetector{
         pclPointer input_cloud;
         pclPointer cloud_transformed;
         pclPointer cloud_scene;
+        pcl::PointCloud<pcl::Normal>::Ptr cloud_normals;
         Eigen::Matrix4f eigen_tf;
 
         pcl::PassThrough<PointT> pass;
         pcl::ConditionAnd<PointT>::Ptr field_cond;
         pcl::ConditionalRemoval<PointT> condrem;
         pcl::UniformSampling<PointT> uniform_sampling;
+        pcl::NormalEstimation<PointT, pcl::Normal> ne;
+        pcl::search::KdTree<PointT>::Ptr tree;
         
         void cloud_cb(const sensor_msgs::PointCloud2ConstPtr&);
         void initializePublishers();
@@ -57,6 +68,7 @@ class HeightDetector{
         pclCloud removeNaNs(pcl::PassThrough<PointT>, pclPointer&);
         void reconfigureCB(liquid_height_estimation::HeightDetectorConfig&, uint32_t);
         pclCloud removeFields(pcl::ConditionAnd<PointT>::Ptr& range_cond, pclPointer& in_cloud);
+        pcl::PointCloud<pcl::Normal> estimateNormals(pcl::PointCloud<PointT>::Ptr&);
     public:
         HeightDetector(ros::NodeHandle&);
         ~HeightDetector();

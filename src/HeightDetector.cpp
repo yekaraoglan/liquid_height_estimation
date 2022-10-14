@@ -11,10 +11,10 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     input_cloud = pclPointer(new pclCloud);
     cloud_transformed = pclPointer(new pclCloud);
     cloud_scene = pclPointer(new pclCloud);
+    cloud_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud<pcl::Normal>);
 
     field_cond = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
-
-    ros::Time now = ros::Time::now();
+    tree = pcl::search::KdTree<PointT>::Ptr(new pcl::search::KdTree<PointT> ());
     listener.waitForTransform("zed_left_camera_frame", "camera_fixed", ros::Time(0), ros::Duration(3.0));
     listener.lookupTransform("zed_left_camera_frame", "camera_fixed", ros::Time(0), transform);
 
@@ -67,6 +67,15 @@ void HeightDetector::clearClouds()
     this->input_cloud->clear();
     this->input_cloud.reset(new pclCloud);
 
+    cloud_transformed->clear();
+    cloud_transformed.reset(new pclCloud);
+
+    cloud_scene->clear();
+    cloud_scene.reset(new pclCloud);
+
+    cloud_normals->clear();
+    cloud_normals.reset(new pcl::PointCloud<pcl::Normal>);
+
     std::cout << "Cleared clouds" << "\n";
 }
 
@@ -80,6 +89,16 @@ pclCloud HeightDetector::removeFields(pcl::ConditionAnd<PointT>::Ptr& range_cond
     condrem.setKeepOrganized(true);
     condrem.filter(*out_cloud);
     return *out_cloud;
+}
+
+pcl::PointCloud<pcl::Normal> HeightDetector::estimateNormals(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& in_cloud)
+{
+    std::cout << "Estimating Normals..." << std::endl;
+    ne.setSearchMethod(tree);
+    ne.setInputCloud(in_cloud);
+    ne.setKSearch(25);
+    ne.compute(*cloud_normals);
+    return *cloud_normals;
 }
 
 void HeightDetector::reconfigureCB(liquid_height_estimation::HeightDetectorConfig& config, uint32_t level)
@@ -118,6 +137,8 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     uniform_sampling.setInputCloud(cloud_scene);
     uniform_sampling.setRadiusSearch(0.001);
     uniform_sampling.filter(*cloud_scene);
+
+    *cloud_normals = this->estimateNormals(cloud_scene);
 
     pcl::toROSMsg(*cloud_scene, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
