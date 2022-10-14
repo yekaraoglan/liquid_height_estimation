@@ -14,7 +14,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     cloud_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud<pcl::Normal>);
     cloud_plane = pclPointer(new pclCloud);
     cloud_wo_plane = pclPointer(new pclCloud);
-
+    cloud_filtered = pclPointer(new pclCloud);
 
     field_cond = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
     tree = pcl::search::KdTree<PointT>::Ptr(new pcl::search::KdTree<PointT> ());
@@ -195,7 +195,12 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     *cloud_plane = this->extractPlane(cloud_scene);
     *cloud_wo_plane = this->removePlane(cloud_scene);
 
-    pcl::toROSMsg(*cloud_wo_plane, test_cloud);
+    sor.setInputCloud(cloud_wo_plane);
+    sor.setMeanK(50);
+    sor.setStddevMulThresh(1.0);
+    sor.filter(*cloud_filtered);
+
+    pcl::toROSMsg(*cloud_filtered, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
     test_cloud.header.stamp = input_cloud->header.stamp;
     this->test_cloud_pub.publish(test_cloud);

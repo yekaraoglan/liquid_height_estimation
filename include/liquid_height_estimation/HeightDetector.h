@@ -25,6 +25,7 @@
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 #include <string>
 #include <cmath>
@@ -58,6 +59,7 @@ class HeightDetector{
         pclPointer cloud_scene;
         pclPointer cloud_plane;
         pclPointer cloud_wo_plane;
+        pclPointer cloud_filtered;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals;
         Eigen::Matrix4f eigen_tf;
 
@@ -71,6 +73,7 @@ class HeightDetector{
         pcl::ModelCoefficients::Ptr coefficients_plane;
         pcl::SACSegmentationFromNormals<PointT, pcl::Normal> seg;
         pcl::ExtractIndices<PointT> extract;
+        pcl::StatisticalOutlierRemoval<PointT> sor;
         
         void cloud_cb(const sensor_msgs::PointCloud2ConstPtr&);
         void initializePublishers();
