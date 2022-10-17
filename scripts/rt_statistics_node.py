@@ -3,6 +3,7 @@
 import rospy
 from std_msgs.msg import Float64MultiArray, Float64
 from geometry_msgs.msg import Point
+from liquid_height_estimation.msg import Statistics
 
 import numpy as np
 
@@ -13,11 +14,8 @@ class RealtimeStatistics:
         
         rospy.init_node("realtime_statistics", anonymous=False)
         rospy.Subscriber("/height_detector/cylinder_coefficients", Float64MultiArray, self.coeff_cb)
-        self.mean_pub = rospy.Publisher("/height_detector/mean", Float64MultiArray, queue_size=1)
-        self.median_pub = rospy.Publisher("/height_detector/median", Float64MultiArray, queue_size=1)
-        self.std_pub = rospy.Publisher("/height_detector/std", Float64MultiArray, queue_size=1)
-
-        self.std_msg = self.median_msg = self.mean_msg = Float64MultiArray()
+        self.stat_pub = rospy.Publisher("/height_detector/statistics", Statistics, queue_size=1)
+        self.stats = Statistics()
 
         self.radius = None
         self.x = None
@@ -48,12 +46,11 @@ class RealtimeStatistics:
             self.means = np.mean(self.data, axis=0)
             self.medians = np.median(self.data, axis=0)
             self.stds = np.std(self.data, axis=0)
-        self.mean_msg.data = self.means
-        self.mean_pub.publish(self.mean_msg)
-        self.median_msg.data = self.medians
-        self.median_pub.publish(self.median_msg)
-        self.std_msg.data = self.stds
-        self.std_pub.publish(self.std_msg)
+        
+        self.stats.means.data = self.means
+        self.stats.medians.data = self.medians
+        self.stats.stds.data = self.stds
+        self.stat_pub.publish(self.stats)
 
 if __name__ == "__main__":
     try:
