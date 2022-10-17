@@ -10,6 +10,7 @@
 #include <tf/transform_listener.h>
 #include <dynamic_reconfigure/server.h>
 #include <liquid_height_estimation/HeightDetectorConfig.h>
+#include "liquid_height_estimation/Statistics.h"
 
 // Other libraries
 #include <signal.h>
@@ -43,10 +44,13 @@ class HeightDetector{
     private:
         ros::NodeHandle nh_;
         ros::Subscriber cloud_sub;
+        ros::Subscriber stats_sub;
         ros::Publisher height_pub;
         ros::Publisher test_cloud_pub;
         ros::Publisher cylinder_coeff_pub;
         double min_x, min_y, min_z, max_x, max_y, max_z;
+
+        double median_x, median_y, median_radius;
 
         tf::StampedTransform transform;
         tf::TransformListener listener;
@@ -91,6 +95,7 @@ class HeightDetector{
         pclCloud extractPlane(pclPointer&);
         pclCloud removePlane(pclPointer&);
         void segmentCylinder(pclPointer&);
+        void statistics_cb(const liquid_height_estimation::Statistics::ConstPtr&);
     public:
         HeightDetector(ros::NodeHandle&);
         ~HeightDetector();

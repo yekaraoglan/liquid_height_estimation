@@ -45,6 +45,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
 void HeightDetector::initializeSubscribers()
 {
     this->cloud_sub = this->nh_.subscribe("/height_detector/input_cloud", 1, &HeightDetector::cloud_cb, this);
+    this->stats_sub = this->nh_.subscribe("/height_detector/statistics", 1, &HeightDetector::statistics_cb, this);
     std::cout << "Subscribers are initialized" << "\n";
 }
 
@@ -194,6 +195,14 @@ void HeightDetector::reconfigureCB(liquid_height_estimation::HeightDetectorConfi
     this->max_y = config.max_y;
     this->min_z = config.min_z;
     this->max_z = config.max_z;
+}
+
+void HeightDetector::statistics_cb(const liquid_height_estimation::Statistics::ConstPtr& msg)
+{
+    std::cout << "Statistics received\n";
+    this->median_x = msg->medians.data[0];
+    this->median_y = msg->medians.data[1];
+    this->median_radius = msg->medians.data[3];
 }
 
 void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_cloud)
