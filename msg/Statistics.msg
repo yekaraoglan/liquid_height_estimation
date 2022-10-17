@@ -1,0 +1,3 @@
+std_msgs/Float64MultiArray means
+std_msgs/Float64MultiArray medians
+std_msgs/Float64MultiArray stds

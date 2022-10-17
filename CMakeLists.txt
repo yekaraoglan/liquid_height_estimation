@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   dynamic_reconfigure
+  message_generation
 )
 
 find_package(PCL 1.8 REQUIRED)
@@ -16,10 +17,20 @@ generate_dynamic_reconfigure_options(
   cfg/HeightDetector.cfg
 )
 
+add_message_files(
+  FILES
+  Statistics.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES liquid_height_estimation
- CATKIN_DEPENDS roscpp rospy std_msgs tf
+ CATKIN_DEPENDS roscpp rospy std_msgs tf message_runtime
 #  DEPENDS system_lib
 )
 
