@@ -42,7 +42,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     median_x = 0.0;
     median_y = 0.0;
     median_radius = 0.0;
-    cup_height = 9.8;
+    cup_height = 0.098;
     std::cout << eigen_tf << "\n";
     std::cout << "Height Detector is constructed" << "\n";
 }
@@ -57,6 +57,7 @@ void HeightDetector::initializeSubscribers()
 void HeightDetector::initializePublishers()
 {
     this->height_pub = this->nh_.advertise<std_msgs::Float64>("/height_detector/height", 1);
+    this->percent_pub = this->nh_.advertise<std_msgs::Int64>("/height_detector/percentage", 1);
     this->test_cloud_pub = this->nh_.advertise<sensor_msgs::PointCloud2>("/height_detector/test_cloud", 1);
     this->cylinder_coeff_pub = this->nh_.advertise<std_msgs::Float64MultiArray>("/height_detector/cylinder_coefficients", 1);
     std::cout << "Publishers are initialized" << "\n";
@@ -324,6 +325,10 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
         max_distance.data = max;
         this->height_pub.publish(max_distance);
         distances.clear();
+        
+        std_msgs::Int64 percentage;
+        percentage.data = (int)((max/cup_height) * 100);
+        this->percent_pub.publish(percentage);
     }
     
     
