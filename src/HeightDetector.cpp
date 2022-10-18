@@ -16,6 +16,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     cloud_plane = pclPointer(new pclCloud);
     cloud_wo_plane = pclPointer(new pclCloud);
     cloud_filtered = pclPointer(new pclCloud);
+    cloud_inside_of_cup = pclPointer(new pclCloud);
 
     field_cond = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
     tree = pcl::search::KdTree<PointT>::Ptr(new pcl::search::KdTree<PointT> ());
@@ -37,7 +38,10 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
         eigen_tf(i, 3) = transform.getOrigin()[i];
     }
     eigen_tf(3, 3) = 0.0;
-        
+    median_x = 0.0;
+    median_y = 0.0;
+    median_radius = 0.0;
+    counter = 0;
     std::cout << eigen_tf << "\n";
     std::cout << "Height Detector is constructed" << "\n";
 }
@@ -88,6 +92,9 @@ void HeightDetector::clearClouds()
 
     cloud_plane->clear();
     cloud_plane.reset(new pclCloud);
+
+    cloud_inside_of_cup->clear();
+    cloud_inside_of_cup.reset(new pclCloud);
 
     cloud_wo_plane->clear();
     cloud_wo_plane.reset(new pclCloud);
@@ -161,7 +168,7 @@ pclCloud HeightDetector::extractPlane(pclPointer& input_cloud)
 
 pclCloud HeightDetector::removePlane(pclPointer& input_cloud)
 {
-    pcl::PointCloud<PointT>::Ptr out_cloud(new pcl::PointCloud<PointT>);
+    pclPointer out_cloud(new pclCloud);
     extract.setNegative(true);
     extract.filter(*out_cloud);
     return *out_cloud;
@@ -246,9 +253,23 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     cylinder_coeff_pub.publish(msg);
     msg.data.clear();
 
-    pcl::toROSMsg(*cloud_wo_plane, test_cloud);
+    pcl::ConditionAnd<PointT>::Ptr field_cond_cup = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
+    
+    pcl::FieldComparison<PointT>::ConstPtr y_max = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, this->median_y - (2*median_radius)));
+    pcl::FieldComparison<PointT>::ConstPtr y_min = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, this->median_y + (2*median_radius)));
+    pcl::FieldComparison<PointT>::ConstPtr x_max = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, this->median_x - (2*median_radius)));
+    pcl::FieldComparison<PointT>::ConstPtr x_min = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, this->median_x + (2*median_radius)));
+    field_cond_cup->addComparison (y_max); 
+    field_cond_cup->addComparison (y_min);
+    field_cond_cup->addComparison (x_max);
+    field_cond_cup->addComparison (x_min);
+    
+    *cloud_inside_of_cup = this->removeFields(field_cond_cup, cloud_scene);
+    std::cout << "Cloud inside of cup size: " << cloud_inside_of_cup->size() << "\n";
+
+    pcl::toROSMsg(*cloud_inside_of_cup, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
-    test_cloud.header.stamp = input_cloud->header.stamp;
+    test_cloud.header.stamp = ros::Time::now();
     this->test_cloud_pub.publish(test_cloud);
     
     this->clearClouds();

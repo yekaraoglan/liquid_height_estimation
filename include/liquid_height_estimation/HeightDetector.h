@@ -51,7 +51,6 @@ class HeightDetector{
         double min_x, min_y, min_z, max_x, max_y, max_z;
 
         double median_x, median_y, median_radius;
-
         tf::StampedTransform transform;
         tf::TransformListener listener;
         tf::Matrix3x3 tf_rot_mat;
@@ -66,6 +65,7 @@ class HeightDetector{
         pclPointer cloud_plane;
         pclPointer cloud_wo_plane;
         pclPointer cloud_filtered;
+        pclPointer cloud_inside_of_cup;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals_cylinder;
         Eigen::Matrix4f eigen_tf;
