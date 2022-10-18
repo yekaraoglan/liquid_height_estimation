@@ -16,6 +16,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     cloud_plane = pclPointer(new pclCloud);
     cloud_wo_plane = pclPointer(new pclCloud);
     cloud_filtered = pclPointer(new pclCloud);
+    cloud_cup = pclPointer(new pclCloud);
     cloud_inside_of_cup = pclPointer(new pclCloud);
 
     field_cond = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
@@ -41,7 +42,6 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     median_x = 0.0;
     median_y = 0.0;
     median_radius = 0.0;
-    counter = 0;
     std::cout << eigen_tf << "\n";
     std::cout << "Height Detector is constructed" << "\n";
 }
@@ -92,6 +92,9 @@ void HeightDetector::clearClouds()
 
     cloud_plane->clear();
     cloud_plane.reset(new pclCloud);
+
+    cloud_cup->clear();
+    cloud_cup.reset(new pclCloud);
 
     cloud_inside_of_cup->clear();
     cloud_inside_of_cup.reset(new pclCloud);
@@ -202,6 +205,13 @@ void HeightDetector::reconfigureCB(liquid_height_estimation::HeightDetectorConfi
     this->max_y = config.max_y;
     this->min_z = config.min_z;
     this->max_z = config.max_z;
+
+    this->min_r = config.min_r;
+    this->max_r = config.max_r;
+    this->min_g = config.min_g;
+    this->max_g = config.max_g;
+    this->min_b = config.min_b;
+    this->max_b = config.max_b;
 }
 
 void HeightDetector::statistics_cb(const liquid_height_estimation::Statistics::ConstPtr& msg)
@@ -210,6 +220,19 @@ void HeightDetector::statistics_cb(const liquid_height_estimation::Statistics::C
     this->median_x = msg->medians.data[0];
     this->median_y = msg->medians.data[1];
     this->median_radius = msg->medians.data[3];
+}
+
+pclCloud HeightDetector::filterColor(pcl::ConditionAnd<PointT>::Ptr color_cond, 
+                                        pclPointer& in_cloud)
+{
+    std::cout << "Filtering color..." << std::endl;
+    pclPointer out_cloud(new pclCloud);
+    condrem.setCondition(color_cond);
+    condrem.setInputCloud(in_cloud);
+    condrem.setKeepOrganized(true);
+    condrem.filter(*out_cloud);
+    return *out_cloud;    
+
 }
 
 void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_cloud)
@@ -255,18 +278,34 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
 
     pcl::ConditionAnd<PointT>::Ptr field_cond_cup = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
     
-    pcl::FieldComparison<PointT>::ConstPtr y_max = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, this->median_y - (2*median_radius)));
-    pcl::FieldComparison<PointT>::ConstPtr y_min = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, this->median_y + (2*median_radius)));
-    pcl::FieldComparison<PointT>::ConstPtr x_max = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, this->median_x - (2*median_radius)));
-    pcl::FieldComparison<PointT>::ConstPtr x_min = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, this->median_x + (2*median_radius)));
+    pcl::FieldComparison<PointT>::ConstPtr y_max = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::GT, this->median_y - (1.5*median_radius)));
+    pcl::FieldComparison<PointT>::ConstPtr y_min = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("y", pcl::ComparisonOps::LT, this->median_y + (1.5*median_radius)));
+    pcl::FieldComparison<PointT>::ConstPtr x_max = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::GT, this->median_x - (1.5*median_radius)));
+    pcl::FieldComparison<PointT>::ConstPtr x_min = pcl::FieldComparison<PointT>::ConstPtr (new pcl::FieldComparison<PointT> ("x", pcl::ComparisonOps::LT, this->median_x + (1.5*median_radius)));
     field_cond_cup->addComparison (y_max); 
     field_cond_cup->addComparison (y_min);
     field_cond_cup->addComparison (x_max);
     field_cond_cup->addComparison (x_min);
-    
-    *cloud_inside_of_cup = this->removeFields(field_cond_cup, cloud_scene);
-    std::cout << "Cloud inside of cup size: " << cloud_inside_of_cup->size() << "\n";
 
+    *cloud_cup = this->removeFields(field_cond_cup, cloud_scene);
+
+    pcl::ConditionAnd<PointT>::Ptr color_cond = pcl::ConditionAnd<PointT>::Ptr(new pcl::ConditionAnd<PointT>);
+    pcl::PackedRGBComparison<PointT>::ConstPtr min_r_cond = pcl::PackedRGBComparison<PointT>::ConstPtr (new pcl::PackedRGBComparison<PointT> ("r", pcl::ComparisonOps::GT, min_r));
+    pcl::PackedRGBComparison<PointT>::ConstPtr max_r_cond = pcl::PackedRGBComparison<PointT>::ConstPtr (new pcl::PackedRGBComparison<PointT> ("r", pcl::ComparisonOps::LT, max_r));
+    pcl::PackedRGBComparison<PointT>::ConstPtr min_g_cond = pcl::PackedRGBComparison<PointT>::ConstPtr (new pcl::PackedRGBComparison<PointT> ("g", pcl::ComparisonOps::GT, min_g));
+    pcl::PackedRGBComparison<PointT>::ConstPtr max_g_cond = pcl::PackedRGBComparison<PointT>::ConstPtr (new pcl::PackedRGBComparison<PointT> ("g", pcl::ComparisonOps::LT, max_g));
+    pcl::PackedRGBComparison<PointT>::ConstPtr min_b_cond = pcl::PackedRGBComparison<PointT>::ConstPtr (new pcl::PackedRGBComparison<PointT> ("b", pcl::ComparisonOps::GT, min_b));
+    pcl::PackedRGBComparison<PointT>::ConstPtr max_b_cond = pcl::PackedRGBComparison<PointT>::ConstPtr (new pcl::PackedRGBComparison<PointT> ("b", pcl::ComparisonOps::LT, max_b));
+
+    color_cond->addComparison (min_r_cond); 
+    color_cond->addComparison (max_r_cond);
+    color_cond->addComparison (min_g_cond);
+    color_cond->addComparison (max_g_cond);
+    color_cond->addComparison (min_b_cond); 
+    color_cond->addComparison (max_b_cond);
+    
+    *cloud_inside_of_cup = this->filterColor(color_cond, cloud_cup);
+    
     pcl::toROSMsg(*cloud_inside_of_cup, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";
     test_cloud.header.stamp = ros::Time::now();

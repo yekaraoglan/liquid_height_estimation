@@ -49,6 +49,7 @@ class HeightDetector{
         ros::Publisher test_cloud_pub;
         ros::Publisher cylinder_coeff_pub;
         double min_x, min_y, min_z, max_x, max_y, max_z;
+        double min_r, min_g, min_b, max_r, max_g, max_b;
 
         double median_x, median_y, median_radius;
         tf::StampedTransform transform;
@@ -65,6 +66,7 @@ class HeightDetector{
         pclPointer cloud_plane;
         pclPointer cloud_wo_plane;
         pclPointer cloud_filtered;
+        pclPointer cloud_cup;
         pclPointer cloud_inside_of_cup;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals;
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals_cylinder;
@@ -96,6 +98,9 @@ class HeightDetector{
         pclCloud removePlane(pclPointer&);
         void segmentCylinder(pclPointer&);
         void statistics_cb(const liquid_height_estimation::Statistics::ConstPtr&);
+        pclCloud filterColor(pcl::ConditionAnd<PointT>::Ptr, 
+                            pclPointer&);
+                                                    
     public:
         HeightDetector(ros::NodeHandle&);
         ~HeightDetector();
