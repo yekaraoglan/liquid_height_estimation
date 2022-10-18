@@ -42,6 +42,7 @@ HeightDetector::HeightDetector(ros::NodeHandle& nh)
     median_x = 0.0;
     median_y = 0.0;
     median_radius = 0.0;
+    cup_height = 9.8;
     std::cout << eigen_tf << "\n";
     std::cout << "Height Detector is constructed" << "\n";
 }
@@ -305,6 +306,26 @@ void HeightDetector::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input_clou
     color_cond->addComparison (max_b_cond);
     
     *cloud_inside_of_cup = this->filterColor(color_cond, cloud_cup);
+    
+    *cloud_inside_of_cup = this->removeNaNs(this->pass, cloud_inside_of_cup);
+    
+    double a = coefficients_plane->values[0];
+    double b = coefficients_plane->values[1];
+    double c = coefficients_plane->values[2];
+    double d = coefficients_plane->values[3];
+    std::cout << cloud_inside_of_cup->points.size() << "\n";
+    if (cloud_inside_of_cup->points.size() != 0){
+        for (auto& point: *cloud_inside_of_cup)
+        {
+            distances.push_back(std::abs(a*point.x + b*point.y + c*point.z + d) / std::sqrt(a*a + b*b + c*c));
+        }
+        double max = *std::max_element(distances.begin(), distances.end());
+        std_msgs::Float64 max_distance;
+        max_distance.data = max;
+        this->height_pub.publish(max_distance);
+        distances.clear();
+    }
+    
     
     pcl::toROSMsg(*cloud_inside_of_cup, test_cloud);
     test_cloud.header.frame_id = "zed_left_camera_frame";

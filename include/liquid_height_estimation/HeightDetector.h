@@ -50,6 +50,8 @@ class HeightDetector{
         ros::Publisher cylinder_coeff_pub;
         double min_x, min_y, min_z, max_x, max_y, max_z;
         double min_r, min_g, min_b, max_r, max_g, max_b;
+        std::vector<double> distances;
+        double cup_height;
 
         double median_x, median_y, median_radius;
         tf::StampedTransform transform;
